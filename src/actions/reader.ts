@@ -242,10 +242,14 @@ export class Reader {
                 let references: vscode.Uri[] = [];
                 let day: string = J.Util.getFileInURI(doc.uri.toString());
                 //let regexp: RegExp = new RegExp("\\[.*\\]\\(\\.\\/" + day + "\\/(.*[^\\)])\\)", 'g');
-                let regexp: RegExp = new RegExp(/\[.*\]\((.*)\)/, 'g');
+                let regexpfmt : string= '\\[[^\\]]*\\]\\(.*?([^ \\"]+\\.' +  this.ctrl.configuration.getFileExtension() + ')[^\\)]*\\)';
+//                console.log(regexpfmt);
+                // let regexp: RegExp = new RegExp(/\[.*\]\((.*)\)/, 'g');
+                let regexp: RegExp = new RegExp(regexpfmt, 'g');
                 let match: RegExpExecArray | null;
 
-                while (!(match = regexp.exec(doc.getText()))===null) {
+                while (!((match = regexp.exec(doc.getText()))===null)) {
+//                    console.log(match);
                     references.push(vscode.Uri.parse(match![1]));
                 }
 

@@ -60,7 +60,7 @@ export interface InlineTemplate extends ScopedTemplate {
 }
 
 /** types in the settings.json */
-type PatternDefinition = { notes: { path: string; file: string }; entries: { path: string; file: string } };
+type PatternDefinition = { notes: { path: string; file: string }, entries: { path: string; file: string } };
 
 var DefaultPatternDefinition: PatternDefinition =
 {
@@ -201,18 +201,19 @@ export class Configuration {
     public getNotesPathPattern(date: Date, _scopeId?: string): Q.Promise<ScopedTemplate> {
         return Q.Promise((onSuccess, onError) => {
             try {
+                let p = this.config.get<PatternDefinition>("patterns");
+
                 let definition: string | undefined;
                 let scopedTemplate: ScopedTemplate = {
                     scope: SCOPE_DEFAULT,
                     template: ""
                 };
                 if (this.resolveScope(_scopeId) === SCOPE_DEFAULT) {
-                    definition = this.config.get<PatternDefinition>("pattern")?.notes?.path;
+                    definition = this.config.get<PatternDefinition>("patterns")?.notes?.path;
                 } else {
                     definition = this.config.get<ScopeDefinition[]>("scopes")?.filter(sd => sd.name === _scopeId).pop()?.patterns?.notes?.path;
                     scopedTemplate.scope = _scopeId!;
                 }
-
                 if (isNullOrUndefined(definition) || definition!.length === 0) {
                     definition = DefaultPatternDefinition.notes.path;
                 }
@@ -291,9 +292,9 @@ export class Configuration {
                     definition = this.config.get<PatternDefinition>("patterns")?.entries?.path;
                 } else {
                     definition = this.config.get<ScopeDefinition[]>("scopes")?.filter(sd => sd.name === _scopeId).pop()?.patterns?.entries?.path;
+                    console.log("scoped?");
                     scopedTemplate.scope = _scopeId!;
                 }
-
                 if (isNullOrUndefined(definition) || definition!.length === 0) {
                     definition = DefaultPatternDefinition.entries.path;
                 }

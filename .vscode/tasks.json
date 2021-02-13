@@ -35,7 +35,7 @@
             "group": "build",
             "problemMatcher": [],
             "label": "npm: compile",
-            "detail": "webpack --devtool nosources-source-map --config ./build/node-extension.webpack.config.js"
+            "detail": "webpack --devtool nosources-source-map --config ./node-extension.webpack.config.js"
         },
         {
             "type": "npm",

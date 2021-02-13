@@ -24,6 +24,8 @@ import * as Path from 'path';
 import * as vscode from 'vscode';
 import * as Q from 'q';
 import * as J from '../.';
+import { ScopedTemplate } from '../ext';
+import { utils } from 'mocha';
 
 
 interface InlineString {
@@ -293,7 +295,8 @@ export class Inject {
      * @param doc the document which we will inject into
      * @param file the referenced path 
      */
-    public buildReference(doc: vscode.TextDocument, file: vscode.Uri): Q.Promise<InlineString> {
+    // TODO reference with relative path
+    public buildReference(doc: vscode.TextDocument, relpath : string, file: vscode.Uri): Q.Promise<InlineString> {
         return Q.Promise<InlineString>((resolve, reject) => {
             try {
                 this.ctrl.logger.trace("Entering injectReference() in ext/inject.ts for document: ", doc.fileName, " and file ", file);
@@ -315,7 +318,7 @@ export class Inject {
                             tpl,
                             ["${title}", title],
                             // TODO: reference might refer to other locations 
-                            ["${link}", file.toString()]
+                            ["${link}", relpath + "/" + path.name + path.ext]
                         );
                     }
                     )
@@ -345,11 +348,20 @@ export class Inject {
         var deferred: Q.Deferred<vscode.TextDocument> = Q.defer<vscode.TextDocument>();
 
 
-
+        let notepath : ScopedTemplate;
+        let entrypath : ScopedTemplate;
 
         this.ctrl.ui.saveDocument(doc)
             .then(() => {
+                return Q.all([
+                    this.ctrl.configuration.getNotesPathPattern(date),
+                    this.ctrl.configuration.getEntryPathPattern(date)                    
+                ]).catch(error=>{throw error;});
+            })
+            .then((patterns: ScopedTemplate[]) => {
                 // we invoke the scan o f the notes directory in parallel
+                notepath = patterns[0];
+                entrypath = patterns[1];
                 return Q.all([
                     this.ctrl.reader.getReferencedFiles(doc),
                     this.ctrl.reader.getFilesInNotesFolder(doc, date)
@@ -360,19 +372,23 @@ export class Inject {
                 let referencedFiles: vscode.Uri[] = results[0];
                 let foundFiles: vscode.Uri[] = results[1];
                 let promises: Q.Promise<InlineString>[] = [];
-
+                let entrypath_value = entrypath.value == undefined ? "" : entrypath.value;
+                let notepath_value = notepath.value == undefined ? "" : notepath.value;                
+                let relpath = Path.relative(entrypath_value,notepath_value);
+                console.log(entrypath_value,notepath_value, relpath);
                 foundFiles.forEach((file, index, array) => {
-                    let foundFile: vscode.Uri | undefined = referencedFiles.find(match => match.fsPath === file.fsPath);
+                    let path: Path.ParsedPath = Path.parse(file.fsPath);
+                    let targetFile : vscode.Uri = vscode.Uri.parse(relpath + "/" + path.name + path.ext);
+                    let foundFile: vscode.Uri | undefined = referencedFiles.find(match => match.fsPath == targetFile.fsPath);
                     if (J.Util.isNullOrUndefined(foundFile)) {
                         this.ctrl.logger.debug("synchronizeReferencedFiles() - File link not present in entry: ", file);
                         // files.push(file); 
                         // we don't execute yet, just collect the promises
-                        promises.push(this.buildReference(doc, file));
-
+                        promises.push(this.buildReference(doc, relpath, file));
+                        // @TODO Insert relative path
                     }
                 });
                 return promises;
-
                 //console.log(JSON.stringify(results));
             })
             .then((promises) => {
